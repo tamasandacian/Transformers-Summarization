@@ -31,15 +31,18 @@ class Summarizer(object):
     :param max_length: max number of words in a document
     :param skip_special_tokens: boolean flag to filter out BERT tags
     """
-    def __init__(self, method='T5', pretrained='t5-base', min_length=10, max_length=512, 
-                 skip_special_tokens=True, return_tensors='pt'):
+    def __init__(self, method='T5', pretrained='t5-base', min_length=10, max_length=512, num_beams=4,
+                 no_repeat_ngram_size=2, skip_special_tokens=True, return_tensors='pt', early_stopping=True):
         
         self.method = method
         self.min_length = min_length
         self.max_length = max_length
         self.pretrained = pretrained
+        self.num_beams = num_beams
+        self.no_repeat_ngram_size = no_repeat_ngram_size
         self.skip_special_tokens = skip_special_tokens
         self.return_tensors = return_tensors
+        self.early_stopping = early_stopping
         self.model, self.tokenizer = self.load_model_tokenizer(pretrained)
 
     def load_model_tokenizer(self, pretrained):
@@ -82,10 +85,13 @@ class Summarizer(object):
         :return: summary text
         """
         input_ids = self.tokenizer.encode(text, return_tensors=self.return_tensors)
-        summary_ids = self.model.generate(input_ids)
-        summary = self.tokenizer.decode(
-            summary_ids[0], skip_special_tokens=self.skip_special_tokens
+        
+        summary_ids = self.model.generate(
+            input_ids, num_beams=self.num_beams, no_repeat_ngram_size=self.no_repeat_ngram_size, 
+            min_length=self.min_length, max_length=self.max_length, early_stopping=self.early_stopping
         )
+        
+        summary = self.tokenizer.decode(summary_ids[0], skip_special_tokens=self.skip_special_tokens)
         return summary
 
     def summarize(self, text):
